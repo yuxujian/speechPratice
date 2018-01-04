@@ -7,21 +7,14 @@
 //
 
 import UIKit
-import AVFoundation
 import Speech
 
-
-enum AudioSessionMode{
-    case record
-    case play
-}
-class ViewController: UIViewController,AVAudioRecorderDelegate, SFSpeechRecognizerDelegate {
-    var audioPlayer:AVAudioPlayer?
-    var audioRecorder:AVAudioRecorder?
-    var isRecord = false
+class ViewController: UIViewController, SFSpeechRecognizerDelegate,UIPickerViewDataSource, UIPickerViewDelegate {
     
+    var recordHelper:RecordHelper?
     
-    private let speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: "en-US"))!
+    var selectedLanguage:String = "en-US"
+    private var speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: "en-US"))!
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private let audioEngine = AVAudioEngine()
@@ -29,95 +22,87 @@ class ViewController: UIViewController,AVAudioRecorderDelegate, SFSpeechRecogniz
     @IBOutlet weak var info: UILabel!
     @IBOutlet weak var textView: UITextView!
     @IBOutlet weak var recordBtn: UIButton!
-    @IBAction func record(_ sender: UIButton) {
-        //手按下去开始录音
-        settingAudioSession(toMode: .record)
-        audioRecorder?.prepareToRecord()
-        audioRecorder?.record()
-        isRecord = true
-        info.isHidden = true
-        recordBtn.setTitle("Recording", for: .normal)
+    @IBOutlet weak var languagePV: UIPickerView!
+    let languages = ["English","Traditional","Simplified"]
+    
+    
+    
+    //显示1个components
+    func numberOfComponents(in pickerView:UIPickerView) -> Int {
+        return 1
+    }
+    
+    //显示多少行
+    func pickerView(_ pickerView:UIPickerView, numberOfRowsInComponent component:Int) -> Int {
+        return languages.count
+    }
+    
+    //显示内容
+    func pickerView(_ PickerView:UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        return languages[row]
+    }
+    
+    //用户选择的内容
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        print(languages[row])
+        var language = getSelectCode(selectedLanguage: languages[row])
+        //print(language)
+        speechRecognizer = SFSpeechRecognizer(locale: Locale.init(identifier: language))!
         
+    }
+    
+    func getSelectCode(selectedLanguage:String) -> String {
+            switch(selectedLanguage) {
+            case "English"  :
+                return "en_US"
+            case "Traditional"  :
+                return "zh_Hant_HK"
+            case "Simplified" :
+                return "zh_Hans_SG"
+            default :
+                return "en_US";
+            }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    @IBAction func record(_ sender: UIButton) {
+        recordBtn.setTitle("Recording", for: .normal)
+        recordHelper?.record()
+        
+        info.isHidden = true
         startRecording()
     }
     
     
     @IBAction func recordBtnRelease(_ sender: UIButton) {
-        //放开手,录音结束
-        if audioRecorder != nil {
             info.isHidden = false
             recordBtn.setTitle("Record", for: .normal)
-            
-            
             audioEngine.stop()
             recognitionRequest?.endAudio()
             recordBtn.isEnabled = false
-            
-            
-            audioRecorder?.stop()
-            isRecord = false
-            settingAudioSession(toMode: .play)
-            
-        }
-        
+            recordHelper?.recordBtnRelease()
+
     }
+    
+    
     
     override func motionEnded(_ motion: UIEventSubtype, with event: UIEvent?) {
         //如果手机摇动
         if event?.subtype == .motionShake {
-            if isRecord == false {
-                audioPlayer?.stop()
-                audioPlayer?.currentTime = 0.0
-                audioPlayer?.play()
-            }
+            recordHelper?.playAudio()
         }
     }
-    
-    func settingAudioSession(toMode mode:AudioSessionMode) {
-        audioPlayer?.stop()
-        
-        let session = AVAudioSession.sharedInstance()
-        do {
-            switch mode {
-            case .record:
-                try session.setCategory(AVAudioSessionCategoryPlayAndRecord)
-            case .play:
-                //try session.setCategory(AVAudioSessionCategoryPlayback)
-                try session.setCategory(AVAudioSessionCategoryAmbient)
-            }
-            
-            try session.setActive(false)
-        } catch {
-            print(error.localizedDescription)
-        }
-    }
-    
-    func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        if flag == true {
-            
-            do{
-                audioPlayer = try AVAudioPlayer(contentsOf: recorder.url)
-                audioPlayer?.stop()
-                audioPlayer?.currentTime = 0.0
-                audioPlayer?.play()
-            }catch{
-                
-            }
-        }
-    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     func startRecording() {
         
@@ -194,46 +179,14 @@ class ViewController: UIViewController,AVAudioRecorderDelegate, SFSpeechRecogniz
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
     override func viewDidLoad() {
        
         super.viewDidLoad()
-        //init an audio recorder
-        let fileName = "user.wav"
-        let path = NSHomeDirectory() + "/Documents/" + fileName
-        let url = URL(fileURLWithPath: path)
-        let recordSetting:[String:Any] = [
-            AVEncoderAudioQualityKey:AVAudioQuality.min.rawValue,
-            AVEncoderBitRateKey:16,
-            AVNumberOfChannelsKey:2,
-            AVSampleRateKey:44100.0
-            
-        ]
-        do {
-            audioRecorder = try AVAudioRecorder(url: url, settings: recordSetting)
-            audioRecorder?.delegate = self
-        } catch  {
-            print(error.localizedDescription)
-        }
-        
-        
-        
-        
-        
-        
-        
+        recordHelper = RecordHelper()
         
         
         recordBtn.isEnabled = false
         speechRecognizer.delegate = self
-        
         SFSpeechRecognizer.requestAuthorization { (authStatus) in
             
             var isButtonEnabled = false
