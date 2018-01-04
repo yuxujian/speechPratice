@@ -63,18 +63,7 @@ class ViewController: UIViewController, SFSpeechRecognizerDelegate,UIPickerViewD
                 return "en_US";
             }
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
     
     @IBAction func record(_ sender: UIButton) {
         recordBtn.setTitle("Recording", for: .normal)
