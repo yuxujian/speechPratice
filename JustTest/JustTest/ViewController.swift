@@ -9,7 +9,12 @@
 import UIKit
 
 class ViewController: UIViewController {
-
+    @IBOutlet weak var mylabel: UILabel!
+    @IBOutlet weak var t1: UITextField!
+    
+    @IBAction func b1(_ sender: UIButton) {
+        mylabel.text = "fuck you "
+    }
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
